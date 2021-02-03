@@ -1,8 +1,9 @@
-import axios from "axios";
 import React, { Component } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import httpService from "./services/httpService";
+import config from "./config.json";
+import "react-toastify/dist/ReactToastify.css";
 import "./App.css";
-
-const endpointUrl = "https://jsonplaceholder.typicode.com/posts";
 
 class App extends Component {
   state = {
@@ -11,15 +12,15 @@ class App extends Component {
 
   handleAdd = async () => {
     const obj = { title: "a", body: "b" };
-    const { data: post } = await axios.post(endpointUrl, obj);
+    const { data: post } = await httpService.post(config.apiEndpoint, obj);
     const posts = [post, ...this.state.posts];
     this.setState({ posts });
   };
 
   handleUpdate = async (post) => {
     post.title = "Updated";
-    await axios.put(endpointUrl + "/" + post.id, post);
-    //axios.patch(endpointUrl + "/" + post.id, { title: post.title })
+    await httpService.put(config.apiEndpoint + "/" + post.id, post);
+    //httpService.patch(config.apiEndpoint + "/" + post.id, { title: post.title })
     const posts = [...this.state.posts];
     const index = posts.indexOf(post);
     posts[index] = { ...post };
@@ -27,21 +28,29 @@ class App extends Component {
   };
 
   handleDelete = async (post) => {
-    await axios.delete(endpointUrl + "/" + post.id);
+    const previousStatePosts = this.state.posts;
     const posts = this.state.posts.filter((p) => p.id !== post.id);
     this.setState({ posts });
+    try {
+      await httpService.delete(config.apiEndpoint + "/" + post.id);
+    } catch (ex) {
+      if (ex.response && ex.response.status === 404)
+        toast.error("The post has already been deleted!");
+      this.setState({ posts: previousStatePosts });
+    }
   };
 
   async componentDidMount() {
     // pending > resolved (success) OR rejected (failure)
-    // axiose returns a promise which contains a "data" property
-    const { data: posts } = await axios.get(endpointUrl);
+    // axios returns a promise which contains a "data" property
+    const { data: posts } = await httpService.get(config.apiEndpoint);
     this.setState({ posts });
   }
 
   render() {
     return (
       <React.Fragment>
+        <ToastContainer />
         <button className="btn btn-primary" onClick={this.handleAdd}>
           Add
         </button>
